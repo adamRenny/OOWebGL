@@ -26,8 +26,8 @@
  - Transparency
 
 ### Geometry
- - Indexed VBOs
- - VBOs
+ - ~~Indexed VBOs~~
+ - ~~VBOs~~
 
 ### BackBuffering
  - Framebuffer
