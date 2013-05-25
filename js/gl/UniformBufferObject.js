@@ -17,8 +17,14 @@ define(function(require) {
             case gl.FLOAT_MAT2:
                 functionName = 'uniformMatrix2fv';
                 break;
+            case gl.FLOAT_VEC2:
+                functionName = 'uniform2fv';
+                break;
             case gl.FLOAT_VEC3:
                 functionName = 'uniform3fv';
+                break;
+            case gl.FLOAT_VEC4:
+                functionName = 'uniform4fv';
                 break;
             case gl.SAMPLER_2D:
                 functionName = 'uniform1i';
@@ -53,10 +59,11 @@ define(function(require) {
         return defaultValue;
     }
 
-    var UniformBufferObject = function(gl, program) {
+    var UniformBufferObject = function(gl, program, activeTextureSelector) {
         this.gl = gl;
         this.program = program;
         this.uniforms = null;
+        this.activeTextureSelector = activeTextureSelector;
 
         this.init();
     };
@@ -84,11 +91,13 @@ define(function(require) {
     UniformBufferObject.prototype.onContextLost = function() {
         this.gl = null;
         this.uniforms = null;
+        this.activeTextureSelector = null;
     };
 
-    UniformBufferObject.prototype.onContextRestored = function(gl, program) {
+    UniformBufferObject.prototype.onContextRestored = function(gl, program, activeTextureSelector) {
         this.gl = gl;
         this.program = program;
+        this.activeTextureSelector = activeTextureSelector;
 
         this.init();
     };
@@ -96,16 +105,17 @@ define(function(require) {
     UniformBufferObject.prototype.pushUniform = function(uniformName, value) {
         this[uniformName] = value;
         var uniform = this.uniforms[uniformName];
+        var activeIndex;
 
         // Is a texture
         switch (uniform.type) {
             case this.gl.SAMPLER_2D:
-                // TODO: Implement an active texture manager
-                this.gl.activeTexture(this.gl.TEXTURE0);
-                value.bind();
-                this.gl[uniform.functionName](uniform.location, 0);
+                activeIndex = this.activeTextureSelector.bindActiveTexture(value);
+                this.gl[uniform.functionName](uniform.location, activeIndex);
                 break;
+            case this.gl.FLOAT_VEC2:
             case this.gl.FLOAT_VEC3:
+            case this.gl.FLOAT_VEC4:
                 this.gl[uniform.functionName](uniform.location, value);
                 break;
             case this.gl.FLOAT_MAT4:
@@ -119,17 +129,15 @@ define(function(require) {
     UniformBufferObject.prototype.pushUniforms = function() {
         var uniformName;
         var uniform;
+        var activeIndex;
 
         for (uniformName in this.uniforms) {
             uniform = this.uniforms[uniformName];
 
             // If it is a texture
             if (uniform.type === this.gl.SAMPLER_2D) {
-                // TODO: Implement an active texture manager
-                this.gl.activeTexture(this.gl.TEXTURE0);
-                value.bind();
-                console.log(uniform);
-                this.gl[uniform.functionName](uniform.location, 0);
+                activeIndex = this.activeTextureSelector.bindActiveTexture(value);
+                this.gl[uniform.functionName](uniform.location, activeIndex);
             } else {
                 this.gl[uniform.functionName](uniform.location, false, this[uniformName]);
             }

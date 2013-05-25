@@ -10,6 +10,7 @@ requirejs.config({
 require([
     'jquery',
     'glMatrix',
+    'RunLoop',
     'gl/Context',
     'gl/Framebuffer',
     'gl/Program',
@@ -18,11 +19,13 @@ require([
     'gl/IndexedVertexBufferObject',
     'gl/UniformBufferObject',
     'gl/Texture',
-    'gl/renderer/ActiveTextureSelector',
-    'config'
+    'gl/Renderer/ActiveTextureSelector',
+    'config',
+    'stats.min'
 ], function(
     $,
     glMatrix,
+    RunLoop,
     Context,
     Framebuffer,
     Program,
@@ -43,7 +46,6 @@ require([
     var vertexSource = ' \
     attribute vec3 aVertexPosition; \
     attribute vec4 aVertexColor; \
-    attribute vec2 aTextureCoord; \
     attribute vec3 aVertexNormal; \
      \
     uniform mat4 uPMatrix; \
@@ -60,7 +62,6 @@ require([
     varying vec3 vLightWeighting; \
      \
     void main(void) { \
-        vTextureCoord = aTextureCoord; \
         vVertexColor = aVertexColor; \
         gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0); \
          \
@@ -71,17 +72,77 @@ require([
     var fragmentSource = ' \
     precision mediump float; \
     varying vec4 vVertexColor; \
-    varying vec2 vTextureCoord; \
     varying vec3 vVertexNormal; \
      \
     varying vec3 vLightWeighting; \
      \
-    uniform sampler2D uSampler; \
+    uniform vec4 uTint; \
     void main(void) { \
-        vec4 textureColor = texture2D(uSampler, vTextureCoord); \
+        vec4 textureColor = vVertexColor * uTint; \
         gl_FragColor = vec4(textureColor.rgb * vLightWeighting, textureColor.a); \
     }';
     var rotation = 0;
+
+    var modelViewCache = mat4.create();
+
+    var boxSpace = 15;
+    var distanceFromCamera = 12;
+
+    var stats = new Stats();
+    stats.setMode(0); // 0: fps, 1: ms
+
+    // Align top-left
+    stats.domElement.style.position = 'absolute';
+    stats.domElement.style.left = '0px';
+    stats.domElement.style.top = '0px';
+
+    document.body.appendChild( stats.domElement );
+
+    var Box = function() {
+        this.position = [
+            Math.random() * boxSpace - (boxSpace * .5),
+            Math.random() * boxSpace - (boxSpace * .5),
+            Math.random() * boxSpace - (boxSpace * .5 + distanceFromCamera)
+        ];
+
+        this.tint = [
+            Math.random(),
+            Math.random(),
+            Math.random(),
+            1.0
+        ];
+
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotateStep = ((Math.random() * Math.PI * 2) / (Math.PI * 2)) / 1000;
+
+        this.rotateVector = [
+            Math.random(),
+            Math.random(),
+            Math.random()
+        ];
+    };
+
+    Box.prototype.update = function(elapsed) {
+        this.rotation += this.rotateStep * elapsed;
+        if (this.rotation > Math.PI * 2) {
+            this.rotation -= Math.PI * 2;
+        }
+    }
+
+    Box.prototype.getModelView = function() {
+        mat4.identity(modelViewCache);
+        mat4.translate(modelViewCache, this.position);
+        mat4.rotate(modelViewCache, this.rotation, this.rotateVector);
+
+        return modelViewCache;
+    };
+
+    var boxes = [];
+    var blocksToRender = 3000;
+
+    for (var i = 0; i < blocksToRender; i++) {
+        boxes.push(new Box());
+    }
 
     var vbo, ubo, vao, program, f, gl, baseModelView, perspectiveMatrix, modelViewMatrix, square, texture, img, normalMatrix;
 
@@ -138,13 +199,10 @@ require([
         //     -1.0, -1.0,  1.0,   1.0, 1.0, 0.0, 1.0
         // ]);
 
-        texture = new Texture(gl);
-        
-        texture.setImage(img);
         program.use();
-        ubo.pushUniform('uSampler', texture);
+
         // Ambient light
-        ubo.pushUniform('uAmbientColor', [0.2, 0.2, 0.2]);
+        ubo.pushUniform('uAmbientColor', [1.0, 1.0, 1.0]);
         // Directional Light
         var lightingDirection = vec3.create();
         vec3.normalize([-0.25, -0.25, -1.0], lightingDirection);
@@ -155,40 +213,40 @@ require([
         square = new IndexedVertexBufferObject(gl, gl.FLOAT);
         square.setVertices([
             // Front face
-            -1.0, -1.0,  1.0,   1.0, 0.0, 0.0, 1.0,   0.0, 0.0,   0.0,  0.0,  1.0,
-             1.0, -1.0,  1.0,   1.0, 0.0, 0.0, 1.0,   1.0, 0.0,   0.0,  0.0,  1.0,
-             1.0,  1.0,  1.0,   1.0, 0.0, 0.0, 1.0,   1.0, 1.0,   0.0,  0.0,  1.0,
-            -1.0,  1.0,  1.0,   1.0, 0.0, 0.0, 1.0,   0.0, 1.0,   0.0,  0.0,  1.0,
+            -1.0, -1.0,  1.0,   1.0, 0.0, 0.0, 1.0,   0.0,  0.0,  1.0,
+             1.0, -1.0,  1.0,   1.0, 0.0, 0.0, 1.0,   0.0,  0.0,  1.0,
+             1.0,  1.0,  1.0,   1.0, 0.0, 0.0, 1.0,   0.0,  0.0,  1.0,
+            -1.0,  1.0,  1.0,   1.0, 0.0, 0.0, 1.0,   0.0,  0.0,  1.0,
 
             // Back face
-            -1.0, -1.0, -1.0,   1.0, 1.0, 0.0, 1.0,   1.0, 0.0,   0.0,  0.0, -1.0,
-            -1.0,  1.0, -1.0,   1.0, 1.0, 0.0, 1.0,   1.0, 1.0,   0.0,  0.0, -1.0,
-             1.0,  1.0, -1.0,   1.0, 1.0, 0.0, 1.0,   0.0, 1.0,   0.0,  0.0, -1.0,
-             1.0, -1.0, -1.0,   1.0, 1.0, 0.0, 1.0,   0.0, 0.0,   0.0,  0.0, -1.0,
+            -1.0, -1.0, -1.0,   1.0, 1.0, 0.0, 1.0,   0.0,  0.0, -1.0,
+            -1.0,  1.0, -1.0,   1.0, 1.0, 0.0, 1.0,   0.0,  0.0, -1.0,
+             1.0,  1.0, -1.0,   1.0, 1.0, 0.0, 1.0,   0.0,  0.0, -1.0,
+             1.0, -1.0, -1.0,   1.0, 1.0, 0.0, 1.0,   0.0,  0.0, -1.0,
 
             // Top face
-            -1.0,  1.0, -1.0,   0.0, 1.0, 0.0, 1.0,   0.0, 1.0,   0.0,  1.0,  0.0,
-            -1.0,  1.0,  1.0,   0.0, 1.0, 0.0, 1.0,   0.0, 0.0,   0.0,  1.0,  0.0,
-             1.0,  1.0,  1.0,   0.0, 1.0, 0.0, 1.0,   1.0, 0.0,   0.0,  1.0,  0.0,
-             1.0,  1.0, -1.0,   0.0, 1.0, 0.0, 1.0,   1.0, 1.0,   0.0,  1.0,  0.0,
+            -1.0,  1.0, -1.0,   0.0, 1.0, 0.0, 1.0,   0.0,  1.0,  0.0,
+            -1.0,  1.0,  1.0,   0.0, 1.0, 0.0, 1.0,   0.0,  1.0,  0.0,
+             1.0,  1.0,  1.0,   0.0, 1.0, 0.0, 1.0,   0.0,  1.0,  0.0,
+             1.0,  1.0, -1.0,   0.0, 1.0, 0.0, 1.0,   0.0,  1.0,  0.0,
 
             // Bottom face
-            -1.0, -1.0, -1.0,   1.0, 0.5, 0.5, 1.0,   1.0, 1.0,   0.0, -1.0,  0.0,
-             1.0, -1.0, -1.0,   1.0, 0.5, 0.5, 1.0,   0.0, 1.0,   0.0, -1.0,  0.0,
-             1.0, -1.0,  1.0,   1.0, 0.5, 0.5, 1.0,   0.0, 0.0,   0.0, -1.0,  0.0,
-            -1.0, -1.0,  1.0,   1.0, 0.5, 0.5, 1.0,   1.0, 0.0,   0.0, -1.0,  0.0,
+            -1.0, -1.0, -1.0,   1.0, 0.5, 0.5, 1.0,   0.0, -1.0,  0.0,
+             1.0, -1.0, -1.0,   1.0, 0.5, 0.5, 1.0,   0.0, -1.0,  0.0,
+             1.0, -1.0,  1.0,   1.0, 0.5, 0.5, 1.0,   0.0, -1.0,  0.0,
+            -1.0, -1.0,  1.0,   1.0, 0.5, 0.5, 1.0,   0.0, -1.0,  0.0,
 
             // Right face
-             1.0, -1.0, -1.0,   1.0, 0.0, 1.0, 1.0,   1.0, 0.0,   1.0,  0.0,  0.0,
-             1.0,  1.0, -1.0,   1.0, 0.0, 1.0, 1.0,   1.0, 1.0,   1.0,  0.0,  0.0,
-             1.0,  1.0,  1.0,   1.0, 0.0, 1.0, 1.0,   0.0, 1.0,   1.0,  0.0,  0.0,
-             1.0, -1.0,  1.0,   1.0, 0.0, 1.0, 1.0,   0.0, 0.0,   1.0,  0.0,  0.0,
+             1.0, -1.0, -1.0,   1.0, 0.0, 1.0, 1.0,   1.0,  0.0,  0.0,
+             1.0,  1.0, -1.0,   1.0, 0.0, 1.0, 1.0,   1.0,  0.0,  0.0,
+             1.0,  1.0,  1.0,   1.0, 0.0, 1.0, 1.0,   1.0,  0.0,  0.0,
+             1.0, -1.0,  1.0,   1.0, 0.0, 1.0, 1.0,   1.0,  0.0,  0.0,
 
             // Left face
-            -1.0, -1.0, -1.0,   0.0, 0.0, 1.0, 1.0,   0.0, 0.0,   -1.0,  0.0,  0.0,
-            -1.0, -1.0,  1.0,   0.0, 0.0, 1.0, 1.0,   1.0, 0.0,   -1.0,  0.0,  0.0,
-            -1.0,  1.0,  1.0,   0.0, 0.0, 1.0, 1.0,   1.0, 1.0,   -1.0,  0.0,  0.0,
-            -1.0,  1.0, -1.0,   0.0, 0.0, 1.0, 1.0,   0.0, 1.0,   -1.0,  0.0,  0.0,
+            -1.0, -1.0, -1.0,   0.0, 0.0, 1.0, 1.0,   -1.0,  0.0,  0.0,
+            -1.0, -1.0,  1.0,   0.0, 0.0, 1.0, 1.0,   -1.0,  0.0,  0.0,
+            -1.0,  1.0,  1.0,   0.0, 0.0, 1.0, 1.0,   -1.0,  0.0,  0.0,
+            -1.0,  1.0, -1.0,   0.0, 0.0, 1.0, 1.0,   -1.0,  0.0,  0.0,
         ]);
 
         square.setIndices([
@@ -203,9 +261,10 @@ require([
         vao.bind();
         vao.addAttribute(program.attributeList.aVertexPosition.location, 3);
         vao.addAttribute(program.attributeList.aVertexColor.location, 4, 3);
-        vao.addAttribute(program.attributeList.aTextureCoord.location, 2, 7);
-        vao.addAttribute(program.attributeList.aVertexNormal.location, 3, 9);
+        vao.addAttribute(program.attributeList.aVertexNormal.location, 3, 7);
         vao.attachVertexAttributePointers();
+
+        ubo.pushUniform('uPMatrix', perspectiveMatrix);
 
         // vbo.bind();
         // vbo.addVertexAttribute(program.attributeList.aVertexPosition.location, 3);
@@ -214,10 +273,16 @@ require([
         square.bind();
         
         // square.addVertexAttribute(program.attributeList.aVertexColor.location, 4, 3);
-        window.vao = vao;
+    }
+
+    function update(elapsed) {
+        for (var i = 0; i < blocksToRender; i++) {
+            boxes[i].update(elapsed);
+        }
     }
 
     function draw() {
+        stats.begin();
         f.clear();
 
         program.use();
@@ -232,15 +297,20 @@ require([
         // vbo.draw();
 
         square.bind();
-        mat4.translate(baseModelView, [0.0, 0.0, -7.0], modelViewMatrix);
-        mat4.rotate(modelViewMatrix, rotation, [1.0, 1.0, 0.0]);
-        ubo.pushUniform('uPMatrix', perspectiveMatrix);
-        ubo.pushUniform('uMVMatrix', modelViewMatrix);
-        mat4.toInverseMat3(modelViewMatrix, normalMatrix);
-        mat3.transpose(normalMatrix);
-        ubo.pushUniform('uNMatrix', normalMatrix);
-        // vao.attachVertexAttributePointers();
-        square.draw();
+
+        for (var i = 0; i < blocksToRender; i++) {
+            var mat = boxes[i].getModelView();
+            // console.log(mat4.str(mat));
+            ubo.pushUniform('uMVMatrix', mat);
+            mat4.toInverseMat3(modelViewMatrix, normalMatrix);
+            mat3.transpose(normalMatrix);
+            ubo.pushUniform('uNMatrix', normalMatrix);
+            ubo.pushUniform('uTint', boxes[i].tint);
+
+            square.draw();
+        }
+
+        stats.end();
     }
 
     function setRotation(newRotation) {
@@ -251,10 +321,12 @@ require([
     window.setRotation = setRotation;
 
     $(document).ready(function() {
-        
-        img = new Image();
-        img.onload = onImageLoaded;
-        
-        img.src = 'img/megaman.jpg';
+        setupScene();
+        draw();
+
+        var runLoop = new RunLoop();
+        runLoop.addCall(update, RunLoop.UPDATE_CYCLE);
+        runLoop.addCall(draw, RunLoop.RENDER_CYCLE);
+        runLoop.start();
     });
 });
