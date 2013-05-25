@@ -12,7 +12,8 @@
   2. Shader Program Order
 
  - Active Texture Selection
-  - Select the next available texture for the render pass
+  - ~~Select the next available texture for the render pass~~
+  - Use a priority based active texture setter to decrease "re-active-ing" for objects
 
  - Distance-based Rendering
   - Select texture/geometry based on visibility
