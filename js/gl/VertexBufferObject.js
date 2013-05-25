@@ -28,50 +28,14 @@ define(function(require) {
 
     VertexBufferObject.prototype.bind = function() {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
-    }
-
-    VertexBufferObject.prototype.addVertexAttribute = function(location, numberOfComponents, offset) {
-        this.vertexAttributes.push(new VertexAttribute(location, numberOfComponents, offset || 0));
-        this.sortVertexAttributesByOffset();
-        this.calculateVertexCount();
     };
 
-    VertexBufferObject.prototype.sortVertexAttributesByOffset = function() {
-        // sort by offset, ascending
-        this.vertexAttributes.sort(function(a, b) {
-            return a.offset - b.offset;
-        });
+    VertexBufferObject.prototype.unbind = function() {
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
     };
 
-    VertexBufferObject.prototype.calculateVertexCount = function() {
-        var vertexCount = this.vertices.length;
-        var attributeCount = 0;
-        var i = 0;
-        var vertexAttributes = this.vertexAttributes;
-        var length = vertexAttributes.length;
-        for (; i < length; i++) {
-            attributeCount = attributeCount + vertexAttributes[i].numberOfComponents;
-        }
-
-        this.vertexCount = vertexCount / attributeCount;
-        this.stride = attributeCount * bufferUtility.getSize(this.gl, this.dataType);
-        // this.stride = 0;
-    };
-
-    VertexBufferObject.prototype.attachVertexAttributePointers = function() {
-        var i = 0;
-        var vertexAttributes = this.vertexAttributes;
-        var length = vertexAttributes.length;
-        var vertexAttribute;
-        var stride = this.stride;
-        var size = bufferUtility.getSize(this.gl, this.dataType);
-        var offset = 0;
-
-        for (; i < length; i++) {
-            vertexAttribute = vertexAttributes[i];
-            this.gl.vertexAttribPointer(vertexAttribute.location, vertexAttribute.numberOfComponents, this.dataType, false, stride, offset);
-            offset = offset + vertexAttribute.numberOfComponents * size;
-        }
+    VertexBufferObject.prototype.setVertexCountWithNumberOfComponents = function(numberOfComponents) {
+        this.vertexCount = this.vertices.length / numberOfComponents;
     };
 
     VertexBufferObject.prototype.setVertices = function(vertices) {

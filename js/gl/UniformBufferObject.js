@@ -17,6 +17,9 @@ define(function(require) {
             case gl.FLOAT_MAT2:
                 functionName = 'uniformMatrix2fv';
                 break;
+            case gl.FLOAT_VEC3:
+                functionName = 'uniform3fv';
+                break;
             case gl.SAMPLER_2D:
                 functionName = 'uniform1i';
                 break;
@@ -95,13 +98,21 @@ define(function(require) {
         var uniform = this.uniforms[uniformName];
 
         // Is a texture
-        if (uniform.type === this.gl.SAMPLER_2D) {
-            // TODO: Implement an active texture manager
-            this.gl.activeTexture(this.gl.TEXTURE0);
-            value.bind();
-            this.gl[uniform.functionName](uniform.location, 0);
-        } else {
-            this.gl[uniform.functionName](uniform.location, false, value);
+        switch (uniform.type) {
+            case this.gl.SAMPLER_2D:
+                // TODO: Implement an active texture manager
+                this.gl.activeTexture(this.gl.TEXTURE0);
+                value.bind();
+                this.gl[uniform.functionName](uniform.location, 0);
+                break;
+            case this.gl.FLOAT_VEC3:
+                this.gl[uniform.functionName](uniform.location, value);
+                break;
+            case this.gl.FLOAT_MAT4:
+            case this.gl.FLOAT_MAT3:
+            case this.gl.FLOAT_MAT2:
+                this.gl[uniform.functionName](uniform.location, false, value);
+                break;
         }
     };
 
