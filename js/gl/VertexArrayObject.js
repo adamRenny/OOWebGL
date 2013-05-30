@@ -31,12 +31,15 @@ define(function(require) {
     };
 
     VertexArrayObject.prototype.bind = function() {
-        this.glExt.bindVertexArrayOES(this.array);
-        this.enableAttributes();
+        if (this.glExt) {
+            this.glExt.bindVertexArrayOES(this.array);
+        }
     };
 
     VertexArrayObject.prototype.unbind = function() {
-        this.glExt.bindVertexArrayOES(null);
+        if (this.glExt) {
+            this.glExt.bindVertexArrayOES(null);
+        }
     }
 
     VertexArrayObject.prototype.addAttribute = function(location, numberOfComponents, offset) {

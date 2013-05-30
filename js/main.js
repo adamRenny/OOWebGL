@@ -205,6 +205,7 @@ require([
         vao.addAttribute(program.attributeList.aVertexColor.location, 4, 3);
         vao.addAttribute(program.attributeList.aTextureCoord.location, 2, 7);
         vao.addAttribute(program.attributeList.aVertexNormal.location, 3, 9);
+        vao.enableAttributes();
         vao.attachVertexAttributePointers();
 
         // vbo.bind();

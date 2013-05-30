@@ -262,6 +262,7 @@ require([
         vao.addAttribute(program.attributeList.aVertexPosition.location, 3);
         vao.addAttribute(program.attributeList.aVertexColor.location, 4, 3);
         vao.addAttribute(program.attributeList.aVertexNormal.location, 3, 7);
+        vao.enableAttributes();
         vao.attachVertexAttributePointers();
 
         ubo.pushUniform('uPMatrix', perspectiveMatrix);

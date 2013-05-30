@@ -16,7 +16,6 @@ define(function(require) {
         this.vertices = null;
         this.buffer = null;
         this.stride = 0;
-        this.vertexAttributes = [];
         this.vertexCount = 0;
 
         this.init();
