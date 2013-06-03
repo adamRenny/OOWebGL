@@ -5,6 +5,54 @@ define(function(require) {
 
     var vec3 = glMatrix.vec3;
 
+    var SPACE = /\s+/;
+    var SEPARATOR = /\//g;
+    var FACE_INDEX = /\d+/g;
+
+    var Attribute = function(faceLine) {
+        var faceData = faceLine.substr(1).trim();
+        var vertices = faceData.split(SPACE);
+        var i = 0;
+        var length = vertices.length;
+
+        var separators = [];
+        var numberOfSeparators;
+        var attributes;
+        var numberOfAttributeTypes;
+
+        var attribute;
+
+        this.attributes = [];
+
+        for (var i = 0; i < vertices.length; i++) {
+            numberOfSeparators = 0;
+            separators = vertices[i].match(SEPARATOR);
+            if (separators) {
+                numberOfSeparators = separators.length;
+            }
+            attributes = vertices[i].match(FACE_INDEX);
+            numberOfAttributeTypes = attributes.length;
+
+            attribute = {
+                v: -1,
+                vt: -1,
+                vn: -1
+            };
+
+            attribute.v = attributes[0];
+            if (numberOfSeparators === 1) {
+                attribute.vt = attributes[1];
+            } else if (numberOfAttributeTypes === 2) {
+                attribute.vn = attributes[1];
+            } else if (numberOfSeparators === 2) {
+                attribute.vt = attributes[1];
+                attribute.vn = attributes[2];
+            }
+
+            this.attributes.push(attribute);
+        }
+    };
+
     var Renderable = function() {
         this.init();
     };
@@ -20,17 +68,18 @@ define(function(require) {
         this.vertexData = null;
     };
 
-    var WAVEFRONT_FIRST_CHAR_PARSER = /\s*(.)/;
-    var WAVEFRONT_VERTEX_PARSER = /\s*v\s*(\-?\d+\.\d+(e\-?\d*)?)\s*(\-?\d+\.\d+(e\-?\d*)?)\s*(\-?\d+\.\d+(e\-?\d*)?)/;
-    var WAVEFRONT_FACE_PARSER = /\s*f\s*(\d+)\s+(\d+)\s+(\d+)/;
-    var WAVEFRONT_TEXTURE_COORD_PARSER = /\s*vt\s*(\-?\d+\.\d+(e\-?\d*)?)\s*(\-?\d+\.\d+(e\-?\d*)?)\s*(\-?\d+\.\d+(e\-?\d*)?)/;
+    var WAVEFRONT_KEY_PARSER = /([^\s]+)/;
+    var WAVEFRONT_VERTEX_PARSER = /v\s*(\-?\d+\.\d+(e\-?\d*)?)\s*(\-?\d+\.\d+(e\-?\d*)?)\s*(\-?\d+\.\d+(e\-?\d*)?)/;
+    var WAVEFRONT_FACE_PARSER = /f\s*(\d+)\s+(\d+)\s+(\d+)/;
+    var WAVEFRONT_TEXTURE_COORD_PARSER = /vt\s*(\-?\d+\.\d+(e\-?\d*)?)\s*(\-?\d+\.\d+(e\-?\d*)?)\s*(\-?\d+\.\d+(e\-?\d*)?)/;
+    var WAVEFRONT_NORMAL_PARSER = /vn\s*(\-?\d+\.\d+(e\-?\d*)?)\s*(\-?\d+\.\d+(e\-?\d*)?)\s*(\-?\d+\.\d+(e\-?\d*)?)/;
 
     Renderable.prototype.inflateFromWavefrontObj = function(content) {
         var lines = content.split('\n');
         var i = 0;
         var length = lines.length;
         var line = null;
-        var firstChar;
+        var key;
         var isFirst = true;
         var matches;
 
@@ -49,15 +98,15 @@ define(function(require) {
         ];
 
         for (; i < length; i++) {
-            line = lines[i];
+            line = lines[i].trim();
 
-            firstChar = line.match(WAVEFRONT_FIRST_CHAR_PARSER);
+            key = line.match(WAVEFRONT_KEY_PARSER);
 
-            if (firstChar === null) {
+            if (key === null) {
                 continue;
             }
 
-            switch (firstChar[1]) {
+            switch (key[1]) {
                 // Vertex
                 case 'v':
                     matches = line.match(WAVEFRONT_VERTEX_PARSER);
@@ -73,6 +122,12 @@ define(function(require) {
                     break;
                 // Face
                 case 'f':
+                    if (isFirst) {
+                        var f = new Attribute(line);
+                        console.log(f);
+                        debugger;
+                        isFirst = false;
+                    }
                     matches = line.match(WAVEFRONT_FACE_PARSER);
                     faces.push(parseInt(matches[1], 10) - 1);
                     faces.push(parseInt(matches[2], 10) - 1);
@@ -82,14 +137,16 @@ define(function(require) {
                 // Texture Coordinate
                 case 'vt':
                     matches = line.match(WAVEFRONT_TEXTURE_COORD_PARSER);
-                    if (isFirst) {
-                        console.log(matches);
-                        isFirst = false;
-                    }
                     textureCoords.push(Number(matches[1]));
                     textureCoords.push(Number(matches[3]));
                     textureCoords.push(Number(matches[5]));
                     break;
+
+                case 'vn':
+                    matches = line.match(WAVEFRONT_NORMAL_PARSER);
+                    textureCoords.push(Number(matches[1]));
+                    textureCoords.push(Number(matches[3]));
+                    textureCoords.push(Number(matches[5]));
                 default:
                     break;
             }
