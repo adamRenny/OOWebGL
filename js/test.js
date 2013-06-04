@@ -29,7 +29,7 @@ require([
     var runLoop = new RunLoop();
 
     function allReady() {
-        if (renderable.vertexData !== null && vertexShader !== undefined && fragmentShader !== undefined) {
+        if (renderable.vertices !== null && vertexShader !== undefined && fragmentShader !== undefined) {
             renderer.loadProgram(vertexShader, fragmentShader);
             runLoop.addCall(function(elapsed) {
                 renderer.update(elapsed);
@@ -44,12 +44,12 @@ require([
 
     bunny = new File();
     bunny.onload = function(content) {
-        renderable.inflateFromWavefrontObj(content);
+        renderable.inflateFromJSON(JSON.parse(content));
         renderable.interleave();
         renderer.add(renderable);
         allReady();
     };
-    bunny.load('data/bunny.obj');
+    bunny.load('data/dragon.json');
 
     var vertexShaderFile = new File();
     vertexShaderFile.onload = function(content) {

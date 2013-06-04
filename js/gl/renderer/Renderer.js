@@ -58,52 +58,7 @@ define(function(require) {
 
         item.vbo = new IndexedVertexBufferObject(this.gl);
         item.vbo.bind();
-        // item.vbo.setVertices([
-        //     // Front face
-        //     -1.0, -1.0,  1.0,   1.0, 0.0, 0.0, 1.0,
-        //      1.0, -1.0,  1.0,   1.0, 0.0, 0.0, 1.0,
-        //      1.0,  1.0,  1.0,   1.0, 0.0, 0.0, 1.0,
-        //     -1.0,  1.0,  1.0,   1.0, 0.0, 0.0, 1.0,
-
-        //     // Back face
-        //     -1.0, -1.0, -1.0,   1.0, 1.0, 0.0, 1.0,
-        //     -1.0,  1.0, -1.0,   1.0, 1.0, 0.0, 1.0,
-        //      1.0,  1.0, -1.0,   1.0, 1.0, 0.0, 1.0,
-        //      1.0, -1.0, -1.0,   1.0, 1.0, 0.0, 1.0,
-
-        //     // Top face
-        //     -1.0,  1.0, -1.0,   0.0, 1.0, 0.0, 1.0,
-        //     -1.0,  1.0,  1.0,   0.0, 1.0, 0.0, 1.0,
-        //      1.0,  1.0,  1.0,   0.0, 1.0, 0.0, 1.0,
-        //      1.0,  1.0, -1.0,   0.0, 1.0, 0.0, 1.0,
-
-        //     // Bottom face
-        //     -1.0, -1.0, -1.0,   1.0, 0.5, 0.5, 1.0,
-        //      1.0, -1.0, -1.0,   1.0, 0.5, 0.5, 1.0,
-        //      1.0, -1.0,  1.0,   1.0, 0.5, 0.5, 1.0,
-        //     -1.0, -1.0,  1.0,   1.0, 0.5, 0.5, 1.0,
-
-        //     // Right face
-        //      1.0, -1.0, -1.0,   1.0, 0.0, 1.0, 1.0,
-        //      1.0,  1.0, -1.0,   1.0, 0.0, 1.0, 1.0,
-        //      1.0,  1.0,  1.0,   1.0, 0.0, 1.0, 1.0,
-        //      1.0, -1.0,  1.0,   1.0, 0.0, 1.0, 1.0,
-
-        //     // Left face
-        //     -1.0, -1.0, -1.0,   0.0, 0.0, 1.0, 1.0,
-        //     -1.0, -1.0,  1.0,   0.0, 0.0, 1.0, 1.0,
-        //     -1.0,  1.0,  1.0,   0.0, 0.0, 1.0, 1.0,
-        //     -1.0,  1.0, -1.0,   0.0, 0.0, 1.0, 1.0
-        // ]);
         item.vbo.setVertices(item.vertexData);
-        // item.vbo.setIndices([
-        //     0, 1, 2,      0, 2, 3,    // Front face
-        //     4, 5, 6,      4, 6, 7,    // Back face
-        //     8, 9, 10,     8, 10, 11,  // Top face
-        //     12, 13, 14,   12, 14, 15, // Bottom face
-        //     16, 17, 18,   16, 18, 19, // Right face
-        //     20, 21, 22,   20, 22, 23  // Left face
-        // ]);
         item.vbo.setIndices(item.faces);
     };
 
@@ -141,7 +96,7 @@ define(function(require) {
     var modelViewMatrix = mat4.create();
     mat4.identity(modelViewMatrix);
 
-    var scale = 5.0;
+    var scale = 0.2;
 
     var step = ((Math.random() * Math.PI * 2) / (Math.PI * 2)) / 1000;
 
@@ -154,7 +109,8 @@ define(function(require) {
 
         this.renderItem.vbo.bind();
 
-        mat4.translate(this.modelViewMatrix, [0.0, -0.5, -3.0], modelViewMatrix);
+        mat4.translate(this.modelViewMatrix, [0.0, -1.0, -3.0], modelViewMatrix);
+        console.log(scale);
         mat4.scale(modelViewMatrix, [scale, scale, scale]);
         mat4.rotate(modelViewMatrix, this.rotation, [0.0, 1.0, 0.0]);
         this.ubo.pushUniform('uMVMatrix', modelViewMatrix);
