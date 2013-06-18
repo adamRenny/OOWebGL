@@ -15,6 +15,8 @@ define(function(require) {
 
     var glMatrix = require('glMatrix');
 
+    var stats = require('stats.min');
+
     var _programId = 0;
 
     var mat4 = glMatrix.mat4;
@@ -46,20 +48,27 @@ define(function(require) {
 
         this.perspectiveMatrix = mat4.create();
         mat4.perspective(45, this.framebuffer.width / this.framebuffer.height , 0.1, 100.0, this.perspectiveMatrix);
-        this.modelViewMatrix = mat4.create();
-        mat4.identity(this.modelViewMatrix);
 
-        this.rotation = 0;
+        this.renderables = [];
+
+        this.stats = new Stats();
+
+        this.stats.domElement.style.position = 'absolute';
+        this.stats.domElement.style.left = '0px';
+        this.stats.domElement.style.top = '0px';
+
+        document.body.appendChild( this.stats.domElement );
 
     };
 
     Renderer.prototype.add = function(item) {
-        this.renderItem = item;
-
         item.vbo = new IndexedVertexBufferObject(this.gl);
         item.vbo.bind();
         item.vbo.setVertices(item.vertexData);
         item.vbo.setIndices(item.faces);
+        item.vbo.unbind();
+
+        this.renderables.push(item);
     };
 
     Renderer.prototype.remove = function(item) {
@@ -73,22 +82,24 @@ define(function(require) {
         this.programs[id] = program;
         _programId = _programId + 1;
 
-        this.renderItem.vbo.bind();
+        for (var i = 0; i < this.renderables.length; i++) {
+            console.log(this.renderables[i]);
+            this.renderables[i].vbo.bind();
 
-        this.vao = new VertexArrayObject(this.gl, program, this.gl.FLOAT);
-        program.use();
-        this.ubo = new UniformBufferObject(this.gl, program, this.activeTextureSelector);
-        this.vao.addAttribute(program.attributeList.aVertexPosition.location, 3);
-        this.vao.addAttribute(program.attributeList.aVertexColor.location, 4, 3);
+            this.renderables[i].vao = new VertexArrayObject(this.gl, program, this.gl.FLOAT);
+            program.use();
+            this.ubo = new UniformBufferObject(this.gl, program, this.activeTextureSelector);
+            this.renderables[i].vao.addAttribute(program.attributeList.aVertexPosition.location, 3);
+            this.renderables[i].vao.addAttribute(program.attributeList.aVertexColor.location, 4, 3);
 
-        this.renderItem.vbo.setVertexCountWithNumberOfComponents(this.vao.numberOfComponents);
+            this.renderables[i].vbo.setVertexCountWithNumberOfComponents(this.renderables[i].vao.numberOfComponents);
 
-        this.vao.bind();
-        this.vao.enableAttributes();
-        this.vao.attachVertexAttributePointers();
+            this.renderables[i].vao.bind();
+            this.renderables[i].vao.enableAttributes();
+            this.renderables[i].vao.attachVertexAttributePointers();
+        }
 
         this.ubo.pushUniform('uPMatrix', this.perspectiveMatrix);
-
 
         return id;
     };
@@ -101,23 +112,25 @@ define(function(require) {
     var step = ((Math.random() * Math.PI * 2) / (Math.PI * 2)) / 1000;
 
     Renderer.prototype.update = function(elapsed) {
-        this.rotation += elapsed * step;
+        for (var i = 0; i < this.renderables.length; i++) {
+            this.renderables[i].update(elapsed);
+        }
     };
 
     Renderer.prototype.render = function() {
+        this.stats.begin();
         this.framebuffer.clear();
 
-        this.renderItem.vbo.bind();
+        for (var i = 0; i < this.renderables.length; i++) {
+            this.renderables[i].vao.bind();
+            this.renderables[i].vbo.bind();
 
-        mat4.translate(this.modelViewMatrix, [0.0, -1.0, -3.0], modelViewMatrix);
-        console.log(scale);
-        mat4.scale(modelViewMatrix, [scale, scale, scale]);
-        mat4.rotate(modelViewMatrix, this.rotation, [0.0, 1.0, 0.0]);
-        this.ubo.pushUniform('uMVMatrix', modelViewMatrix);
+            this.ubo.pushUniform('uMVMatrix', this.renderables[i].modelView);
 
-        this.renderItem.vbo.draw();
+            this.renderables[i].vbo.draw();
+        }
 
-        window.renderItem = this.renderItem;
+        this.stats.end();
     };
 
     return Renderer;

@@ -4,6 +4,10 @@ define(function(require) {
     var glMatrix = require('glMatrix');
 
     var vec3 = glMatrix.vec3;
+    var mat4 = glMatrix.mat4;
+
+    var identity = mat4.create();
+    mat4.identity(identity);
 
     var Renderable = function() {
         this.init();
@@ -17,6 +21,14 @@ define(function(require) {
         this.isDirty = true;
 
         this.vbo = null;
+
+        this.position = [0.0, 0.0, 0.0];
+        this.scale = [1.0, 1.0, 1.0];
+        this.rotation = 0;
+        this.modelView = mat4.create();
+        this.updateModelView();
+
+        this.rotationStep = (Math.PI / 2) * Math.random() / 1000;
     };
 
     Renderable.prototype.inflateFromJSON = function(content) {
@@ -68,6 +80,13 @@ define(function(require) {
         }
 
         this.vertexData = vertexData;
+    };
+
+    Renderable.prototype.updateModelView = function() {
+        mat4.set(identity, this.modelView);
+        mat4.translate(this.modelView, this.position);
+        mat4.scale(this.modelView, this.scale);
+        mat4.rotate(this.modelView, this.rotation, [0.0, 1.0, 0.0]);
     };
 
     Renderable.prototype.calculateVertexNormals = function(vertices, faces) {
@@ -149,6 +168,15 @@ define(function(require) {
         console.log(normals);
 
         return normals;
+    };
+
+    Renderable.prototype.update = function(elapsed) {
+        this.rotation += this.rotationStep * elapsed;
+        if (this.rotation >= Math.PI * 2) {
+            this.rotation -= Math.PI * 2;
+        }
+
+        this.updateModelView();
     };
 
     return Renderable;
